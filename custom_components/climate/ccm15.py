@@ -14,7 +14,7 @@ import logging
 import json
 import voluptuous as vol
 
-from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA, STATE_COOL, STATE_HEAT, STATE_FAN_ONLY, STATE_OFF )
+from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA, STATE_COOL, STATE_HEAT, STATE_FAN_ONLY, STATE_OFF, STATE_AUTO)
 from homeassistant.const import (CONF_NAME, CONF_HOST, CONF_PORT,
                                  TEMP_CELSIUS, ATTR_TEMPERATURE)
 import homeassistant.helpers.config_validation as cv
@@ -39,7 +39,7 @@ CONST_MODE_FAN_MIDDLE = 'middle'
 CONST_MODE_FAN_HIGH = 'high'
 CONST_MODE_FAN_OFF = 'off'
 
-CONST_STATE_CMD_MAP = {STATE_COOL:0, STATE_HEAT:1, STATE_FAN_ONLY:3, STATE_OFF:4}
+CONST_STATE_CMD_MAP = {STATE_COOL:0, STATE_HEAT:1, STATE_FAN_ONLY:3, STATE_OFF:4, STATE_AUTO:5}
 CONST_CMD_STATE_MAP = {v: k for k, v in CONST_STATE_CMD_MAP.items()}
 CONST_FAN_CMD_MAP = {CONST_MODE_FAN_AUTO:0, CONST_MODE_FAN_LOW:2, CONST_MODE_FAN_MIDDLE:3, CONST_MODE_FAN_HIGH:4, CONST_MODE_FAN_OFF:5}
 CONST_CMD_FAN_MAP = {v: k for k, v in CONST_FAN_CMD_MAP.items()}
@@ -189,7 +189,7 @@ class Thermostat(ClimateDevice):
         self._ac_id = 2 ** (int(ac_name.strip('a')))
         self._host = host
         self._port = port
-        self._operation_list = [STATE_OFF, STATE_COOL, STATE_HEAT, STATE_FAN_ONLY]
+        self._operation_list = [STATE_OFF, STATE_AUTO, STATE_COOL, STATE_HEAT, STATE_FAN_ONLY]
         self._fan_list = [CONST_MODE_FAN_OFF, CONST_MODE_FAN_AUTO, CONST_MODE_FAN_LOW, CONST_MODE_FAN_MIDDLE, CONST_MODE_FAN_HIGH]
         self._current_setfan = CONST_MODE_FAN_AUTO
         self.updateWithAcdata(acdata)
