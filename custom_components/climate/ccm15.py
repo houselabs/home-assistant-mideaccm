@@ -14,7 +14,9 @@ import logging
 import json
 import voluptuous as vol
 
-from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA, STATE_COOL, STATE_HEAT, STATE_FAN_ONLY, STATE_OFF, STATE_AUTO)
+from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA, 
+                                                SUPPORT_TARGET_TEMPERATURE, SUPPORT_FAN_MODE, SUPPORT_OPERATION_MODE,
+                                                STATE_COOL, STATE_HEAT, STATE_FAN_ONLY, STATE_OFF, STATE_AUTO)
 from homeassistant.const import (CONF_NAME, CONF_HOST, CONF_PORT,
                                  TEMP_CELSIUS, ATTR_TEMPERATURE)
 import homeassistant.helpers.config_validation as cv
@@ -49,6 +51,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_HOST, default='192.168.1.200'): cv.string,
     vol.Optional(CONF_PORT, default=80): cv.positive_int,
 })
+
+SUPPORT_FLAGS = (SUPPORT_TARGET_TEMPERATURE | SUPPORT_FAN_MODE | SUPPORT_OPERATION_MODE )
 
 # parse data from ccm bytes
 def get_status_from(s):
@@ -195,6 +199,11 @@ class Thermostat(ClimateDevice):
         self.updateWithAcdata(acdata)
         _LOGGER.debug("Init called")
         self.update()
+
+    @property
+    def supported_features(self):
+        """Return the list of supported features."""
+        return SUPPORT_FLAGS
 
     @property
     def should_poll(self):
