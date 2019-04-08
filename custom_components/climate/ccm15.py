@@ -1,7 +1,6 @@
 """
 Support for Midea's CCM-15 thermostats.
 Author: github.com/ohsc
-
 configuration.yaml
 climate:
   - platform: ccm15
@@ -14,11 +13,11 @@ import logging
 import json
 import voluptuous as vol
 
-from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA, 
-                                                SUPPORT_TARGET_TEMPERATURE, SUPPORT_FAN_MODE, SUPPORT_OPERATION_MODE,
-                                                STATE_COOL, STATE_HEAT, STATE_FAN_ONLY, STATE_OFF, STATE_AUTO)
+from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA)
+from homeassistant.components.climate.const import (SUPPORT_TARGET_TEMPERATURE, SUPPORT_FAN_MODE, SUPPORT_OPERATION_MODE,
+                                                STATE_COOL, STATE_HEAT, STATE_FAN_ONLY, STATE_AUTO)
 from homeassistant.const import (CONF_NAME, CONF_HOST, CONF_PORT,
-                                 TEMP_CELSIUS, ATTR_TEMPERATURE)
+                                 TEMP_CELSIUS, ATTR_TEMPERATURE, STATE_OFF)
 import homeassistant.helpers.config_validation as cv
 import xmltodict
 import requests
