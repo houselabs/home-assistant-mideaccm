@@ -1,0 +1,10 @@
+{
+    "domain": "ccm15",
+    "name": "ccm15",
+    "documentation": "https://github.com/houselabs/home-assistant-mideaccm",
+    "requirements": [
+      "xmltodict==0.11.0"
+    ],
+    "dependencies": [],
+    "codeowners": []
+  }

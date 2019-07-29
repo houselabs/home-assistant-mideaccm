@@ -14,15 +14,18 @@ import json
 import voluptuous as vol
 
 from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA)
-from homeassistant.components.climate.const import (SUPPORT_TARGET_TEMPERATURE, SUPPORT_FAN_MODE, SUPPORT_OPERATION_MODE,
-                                                STATE_COOL, STATE_HEAT, STATE_FAN_ONLY, STATE_AUTO)
+from homeassistant.components.climate.const import (
+    ATTR_HVAC_MODE, HVAC_MODE_COOL, HVAC_MODE_DRY, HVAC_MODE_FAN_ONLY,
+    HVAC_MODE_HEAT, SUPPORT_FAN_MODE, HVAC_MODE_AUTO, HVAC_MODE_OFF,
+    SUPPORT_TARGET_TEMPERATURE)
 from homeassistant.const import (CONF_NAME, CONF_HOST, CONF_PORT,
-                                 TEMP_CELSIUS, ATTR_TEMPERATURE, STATE_OFF)
+                                 TEMP_CELSIUS, ATTR_TEMPERATURE)
 import homeassistant.helpers.config_validation as cv
 import xmltodict
 import requests
 REQUIREMENTS = ['xmltodict==0.11.0']
 
+DOMAIN = 'ccm15'
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_NAME = 'Midea Thermostat'
@@ -32,18 +35,18 @@ CONF_URL_STATUS = '/status.xml'
 CONF_URL_CTRL = '/ctrl.xml'
 
 ATTR_MODE = 'mode'
-STATE_MANUAL = 'manual'
-STATE_UNKNOWN = 'unknown'
 CONST_MODE_FAN_AUTO = 'auto'
 CONST_MODE_FAN_LOW = 'low'
 CONST_MODE_FAN_MIDDLE = 'middle'
 CONST_MODE_FAN_HIGH = 'high'
 CONST_MODE_FAN_OFF = 'off'
 
-CONST_STATE_CMD_MAP = {STATE_COOL:0, STATE_HEAT:1, STATE_FAN_ONLY:3, STATE_OFF:4, STATE_AUTO:5}
+CONST_STATE_CMD_MAP = {HVAC_MODE_COOL:0, HVAC_MODE_HEAT:1, HVAC_MODE_FAN_ONLY:3, HVAC_MODE_OFF:4, HVAC_MODE_AUTO:5}
 CONST_CMD_STATE_MAP = {v: k for k, v in CONST_STATE_CMD_MAP.items()}
 CONST_FAN_CMD_MAP = {CONST_MODE_FAN_AUTO:0, CONST_MODE_FAN_LOW:2, CONST_MODE_FAN_MIDDLE:3, CONST_MODE_FAN_HIGH:4, CONST_MODE_FAN_OFF:5}
 CONST_CMD_FAN_MAP = {v: k for k, v in CONST_FAN_CMD_MAP.items()}
+
+SUPPORT_HVAC = [HVAC_MODE_COOL, HVAC_MODE_HEAT, HVAC_MODE_DRY, HVAC_MODE_FAN_ONLY]
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
@@ -51,7 +54,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_PORT, default=80): cv.positive_int,
 })
 
-SUPPORT_FLAGS = (SUPPORT_TARGET_TEMPERATURE | SUPPORT_FAN_MODE | SUPPORT_OPERATION_MODE )
+SUPPORT_FLAGS = (SUPPORT_TARGET_TEMPERATURE | SUPPORT_FAN_MODE)
 
 # parse data from ccm bytes
 def get_status_from(s):
@@ -137,7 +140,7 @@ def get_status_from(s):
 
     ac['l_cool_temp'] = ctl
     ac['l_heat_temp'] = htl
-    
+
     return ac
 
 # poll ac status
@@ -158,14 +161,14 @@ def poll_status(host, port):
     except requests.exceptions.ConnectionError:
         _LOGGER.error("No route to device at %s", resource)
         return None
-    
+
     acs = {}
     for ac_name, ac_binary in data.items():
         if len(ac_binary) > 1:
             ac_state = get_status_from(ac_binary)
             if ac_state:
                 acs[ac_name] = ac_state
-    
+
     return acs
 
 # pylint: disable=unused-argument
@@ -192,7 +195,7 @@ class Thermostat(ClimateDevice):
         self._ac_id = 2 ** (int(ac_name.strip('a')))
         self._host = host
         self._port = port
-        self._operation_list = [STATE_OFF, STATE_AUTO, STATE_COOL, STATE_HEAT, STATE_FAN_ONLY]
+        self._hvac_list = SUPPORT_HVAC
         self._fan_list = [CONST_MODE_FAN_OFF, CONST_MODE_FAN_AUTO, CONST_MODE_FAN_LOW, CONST_MODE_FAN_MIDDLE, CONST_MODE_FAN_HIGH]
         self._current_setfan = CONST_MODE_FAN_AUTO
         self.updateWithAcdata(acdata)
@@ -224,7 +227,7 @@ class Thermostat(ClimateDevice):
         acdata = poll_status(self._host, self._port)[self._ac_name]
         self.updateWithAcdata(acdata)
         _LOGGER.debug("Update called")
-    
+
     def setStates(self):
         """Set new target states."""
         state_cmd = CONST_STATE_CMD_MAP[self._current_state]
@@ -286,52 +289,51 @@ class Thermostat(ClimateDevice):
             self.schedule_update_ha_state()
 
     @property
-    def current_operation(self):
+    def hvac_mode(self):
         """Return the current state of the thermostat."""
         return self._current_state
 
-    def set_operation_mode(self, operation_mode):
-        """Set operation mode."""
-        if operation_mode not in CONST_STATE_CMD_MAP:
-            operation_mode = STATE_OFF
-        if self._current_state != operation_mode and self._current_fan == CONST_MODE_FAN_OFF:
+    def set_hvac_mode(self, hvac_mode):
+        """Set hvac mode."""
+        if hvac_mode not in CONST_STATE_CMD_MAP:
+            hvac_mode = HVAC_MODE_OFF
+        if self._current_state != hvac_mode and self._current_fan == CONST_MODE_FAN_OFF:
             self._current_fan = self._current_setfan
-        self._current_state = operation_mode
-        self.setStates()        
-        self.schedule_update_ha_state()
-        return
-
-    @property
-    def operation_list(self):
-        """List of available operation modes."""
-        return self._operation_list
-
-    @property
-    def current_fan_mode(self):
-        """Return the fan setting."""
-        return self._current_fan
-
-    def set_fan_mode(self, fan):
-        """Set new target fan mode."""
-        if self._current_state == STATE_OFF:
-            return
-        if fan not in CONST_FAN_CMD_MAP:
-            fan = CONST_MODE_FAN_AUTO
-        if fan == CONST_MODE_FAN_OFF:
-            self._current_state = STATE_OFF
-        
-        self._current_fan = fan
-        
-        if self._current_fan != CONST_MODE_FAN_OFF:
-            self._current_setfan = self._current_fan
-        
+        self._current_state = hvac_mode
         self.setStates()
         self.schedule_update_ha_state()
         return
 
     @property
-    def fan_list(self):
+    def hvac_modes(self):
+        """List of available hvac modes."""
+        return self._hvac_list
+
+    @property
+    def fan_mode(self):
+        """Return the fan setting."""
+        return self._current_fan
+
+    def set_fan_mode(self, fan):
+        """Set new target fan mode."""
+        if self._current_state == HVAC_MODE_OFF:
+            return
+        if fan not in CONST_FAN_CMD_MAP:
+            fan = CONST_MODE_FAN_AUTO
+        if fan == CONST_MODE_FAN_OFF:
+            self._current_state = HVAC_MODE_OFF
+
+        self._current_fan = fan
+
+        if self._current_fan != CONST_MODE_FAN_OFF:
+            self._current_setfan = self._current_fan
+
+        self.setStates()
+        self.schedule_update_ha_state()
+        return
+
+    @property
+    def fan_modes(self):
         """Return the list of available fan modes."""
         return self._fan_list
 
-    
