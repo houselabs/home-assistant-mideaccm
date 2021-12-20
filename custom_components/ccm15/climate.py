@@ -13,7 +13,7 @@ import logging
 import json
 import voluptuous as vol
 
-from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA)
+from homeassistant.components.climate import (ClimateEntity, PLATFORM_SCHEMA)
 from homeassistant.components.climate.const import (
     ATTR_HVAC_MODE, HVAC_MODE_COOL, HVAC_MODE_DRY, HVAC_MODE_FAN_ONLY,
     HVAC_MODE_HEAT, SUPPORT_FAN_MODE, HVAC_MODE_AUTO, HVAC_MODE_OFF,
@@ -185,7 +185,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
 
 # pylint: disable=abstract-method
 # pylint: disable=too-many-instance-attributes
-class Thermostat(ClimateDevice):
+class Thermostat(ClimateEntity):
     """Representation of a Midea thermostat."""
 
     def __init__(self, name, ac_name, host, port, acdata):
@@ -256,7 +256,7 @@ class Thermostat(ClimateDevice):
         return self._name
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the device specific state attributes."""
         return {
             ATTR_MODE: self._current_state
