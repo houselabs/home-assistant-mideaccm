@@ -192,14 +192,18 @@ class Thermostat(ClimateDevice):
         """Initialize the thermostat."""
         self._name = '{}_{}'.format(name, ac_name)
         self._ac_name = ac_name
-        self._ac_id = 2 ** (int(ac_name.strip('a')))
+        pn = int(ac_name.strip('a'))
+        self._ac_id = 2 ** pn
+
+        self._ac0 = 1<<pn if pn < 32 else 0
+        self._ac1 = 1<<(pn-32) if pn >= 32 else 0
         self._host = host
         self._port = port
         self._hvac_list = SUPPORT_HVAC
         self._fan_list = [CONST_MODE_FAN_OFF, CONST_MODE_FAN_AUTO, CONST_MODE_FAN_LOW, CONST_MODE_FAN_MIDDLE, CONST_MODE_FAN_HIGH]
         self._current_setfan = CONST_MODE_FAN_AUTO
         self.updateWithAcdata(acdata)
-        _LOGGER.debug("Init called")
+        _LOGGER.debug("Init called, ac0=%i, ac1=%i, name: %s" %(self._ac0, self._ac1, self._name))
         self.update()
 
     @property
@@ -237,8 +241,8 @@ class Thermostat(ClimateDevice):
             self._host,
             self._port,
             CONF_URL_CTRL +
-            '?ac0=' + str(self._ac_id) +
-            '&ac1=0' +
+            '?ac0=' + str(self._ac0) +
+            '&ac1=' + str(self._ac1) +
             '&mode=' + str(state_cmd) +
             '&fan=' + str(fan_cmd) +
             '&temp=' + str(self._current_settemp)
